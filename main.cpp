@@ -1,34 +1,76 @@
-#include "Game.hpp"
+#include <SFML/Graphics.hpp>
+#include "Player.hpp"
+#include "Obstacle.hpp"
 
-Game *game = nullptr;
+#include <vector>
+#include <cstdlib>   // std::rand, std::srand
+#include <ctime>     // std::time
+#include <algorithm> // std::remove_if
 
-int main(int argc, char* argv[]){
+int main(){
+    sf::RenderWindow window({800,600}, "Bike Game");
+    Player player("assets/img/bik.png");
 
-    const int FPS = 60;
-    const int frameDelay = 1000 / FPS;
-    Uint32 frameStart;
-    int frameTime;
+    // seed random for obstacle Y
+    std::srand((unsigned)std::time(nullptr));
 
-    game = new Game();
+    std::vector<Obstacle> obstacles;
+    sf::Clock spawnClock;
 
-    game->init("Test Engine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, false);
+    const float obstacleSpeed = 0.1f;      // pixels per frame
+    const float spawnInterval  = 2.0f;    // seconds
 
-    while (game->running())
-    {
-        frameStart = SDL_GetTicks();
+    while(window.isOpen()){
+        sf::Event evt;
+        while(window.pollEvent(evt))
+            if(evt.type == sf::Event::Closed)
+                window.close();
 
-        game->handelEvents();
-        game->update();
-        game->render();
+        // 1) spawn new obstacle every spawnInterval seconds
+        if(spawnClock.getElapsedTime().asSeconds() >= spawnInterval) {
+            // pick a random Y so the whole sprite stays on-screen
+            // we need a temporary Obstacle to get its height:
+            Obstacle temp("assets/img/bg.jpeg", 0, 0);
+            float maxY = window.getSize().y - temp.getGlobalBounds().height;
+            float y = static_cast<float>(std::rand()) / RAND_MAX * maxY;
+            // spawn just off the right edge:
+            float startX = window.getSize().x + 10.f;
+            obstacles.emplace_back("assets/img/bg.jpegng", startX, y);
 
-        frameTime = SDL_GetTicks() - frameStart;
-        if (frameDelay > frameTime)
-        {
-            SDL_Delay(frameDelay - frameTime);
+            spawnClock.restart();
         }
+
+        // 2) input + player update
+        player.handleInput();
+        player.update(window);
+
+        // 3) move & draw everything
+        window.clear();
+
+        // draw player behind obstacles if you like, or vice-versa:
+        player.draw(window);
+
+        for(auto& obs : obstacles) {
+            obs.update(obstacleSpeed);
+            obs.draw(window);
+
+            // 4) collision test
+            if (player.getGlobalBounds().intersects(obs.getGlobalBounds())) {
+                std::cout << "💥 Hit obstacle! 💥\n";
+            }
+        }
+
+        // optional: remove off-screen obstacles
+        obstacles.erase(
+            std::remove_if(obstacles.begin(),
+                           obstacles.end(),
+                           [&](const Obstacle& o){
+                               return o.getX() + o.getGlobalBounds().width < 0;
+                           }),
+            obstacles.end());
+
+        window.display();
     }
 
-    game->clean();
-    
     return 0;
 }
