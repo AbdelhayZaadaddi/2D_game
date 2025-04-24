@@ -6,10 +6,10 @@
 
 class Obstacle {
 private:
-    sf::Sprite        sprite;
-    sf::Texture       texture;
+    sf::Sprite sprite;
+    sf::Texture texture;
     sf::RectangleShape fallbackShape;
-    bool              textureLoaded = false;
+    bool textureLoaded = false;
 
 public:
     // path + spawn coords

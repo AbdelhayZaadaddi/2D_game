@@ -5,13 +5,14 @@ Obstacle::Obstacle(const std::string& texturePath, float startX, float startY) {
         textureLoaded = true;
         sprite.setTexture(texture);
         sprite.setPosition(startX, startY);
+        sprite.setScale(0.4f, 0.4f);
     } else {
         std::cerr << "⚠️  Failed to load obstacle texture: " 
                   << texturePath << "\n";
         textureLoaded = false;
         // make a 50×50 red block (adjust size as you like)
-        fallbackShape.setSize({50.f, 50.f});
-        fallbackShape.setFillColor(sf::Color::Red);
+        //fallbackShape.setSize({50.f, 50.f});
+        //fallbackShape.setFillColor(sf::Color::Red);
         fallbackShape.setPosition(startX, startY);
     }
 }

@@ -1,74 +1,101 @@
 #include <SFML/Graphics.hpp>
 #include "Player.hpp"
-#include "Obstacle.hpp"
+#include "ObstacleManager.hpp"
+#include <iostream>
 
-#include <vector>
-#include <cstdlib>   // std::rand, std::srand
-#include <ctime>     // std::time
-#include <algorithm> // std::remove_if
+int main() {
+    sf::RenderWindow window({800, 600}, "Bike Game");
 
-int main(){
-    sf::RenderWindow window({800,600}, "Bike Game");
-    Player player("assets/img/bik.png");
+    // 1) Load font
+    sf::Font font;
+    if (!font.loadFromFile("assets/font/arial.ttf")) {
+        std::cerr << "Failed to load font\n";
+        return -1;
+    }
 
-    // seed random for obstacle Y
-    std::srand((unsigned)std::time(nullptr));
+    // 2) Create menu texts
+    sf::Text menuItems[2];
+    menuItems[0].setFont(font);
+    menuItems[0].setString("Start Game");
+    menuItems[0].setCharacterSize(36);
+    menuItems[0].setPosition(300, 200);
 
-    std::vector<Obstacle> obstacles;
-    sf::Clock spawnClock;
+    menuItems[1].setFont(font);
+    menuItems[1].setString("Exit");
+    menuItems[1].setCharacterSize(36);
+    menuItems[1].setPosition(300, 300);
 
-    const float obstacleSpeed = 0.1f;      // pixels per frame
-    const float spawnInterval  = 2.0f;    // seconds
+    // Track which menu item is selected: 0 = Start, 1 = Exit
+    int selected = 0;
 
-    while(window.isOpen()){
-        sf::Event evt;
-        while(window.pollEvent(evt))
-            if(evt.type == sf::Event::Closed)
-                window.close();
-
-        // 1) spawn new obstacle every spawnInterval seconds
-        if(spawnClock.getElapsedTime().asSeconds() >= spawnInterval) {
-            // pick a random Y so the whole sprite stays on-screen
-            // we need a temporary Obstacle to get its height:
-            Obstacle temp("assets/img/bg.jpeg", 0, 0);
-            float maxY = window.getSize().y - temp.getGlobalBounds().height;
-            float y = static_cast<float>(std::rand()) / RAND_MAX * maxY;
-            // spawn just off the right edge:
-            float startX = window.getSize().x + 10.f;
-            obstacles.emplace_back("assets/img/bg.jpegng", startX, y);
-
-            spawnClock.restart();
+    // 3) Menu loop
+    while (window.isOpen()) {
+        // highlight selection
+        for (int i = 0; i < 2; ++i) {
+            if (i == selected)
+                menuItems[i].setFillColor(sf::Color::Yellow);
+            else
+                menuItems[i].setFillColor(sf::Color::White);
         }
 
-        // 2) input + player update
-        player.handleInput();
-        player.update(window);
-
-        // 3) move & draw everything
-        window.clear();
-
-        // draw player behind obstacles if you like, or vice-versa:
-        player.draw(window);
-
-        for(auto& obs : obstacles) {
-            obs.update(obstacleSpeed);
-            obs.draw(window);
-
-            // 4) collision test
-            if (player.getGlobalBounds().intersects(obs.getGlobalBounds())) {
-                std::cout << "💥 Hit obstacle! 💥\n";
+        sf::Event evt;
+        while (window.pollEvent(evt)) {
+            if (evt.type == sf::Event::Closed) {
+                window.close();
+            }
+            else if (evt.type == sf::Event::KeyPressed) {
+                if (evt.key.code == sf::Keyboard::Up || evt.key.code == sf::Keyboard::W) {
+                    selected = (selected + 1) % 2;       // move up/down
+                }
+                else if (evt.key.code == sf::Keyboard::Down || evt.key.code == sf::Keyboard::S) {
+                    selected = (selected + 1) % 2;
+                }
+                else if (evt.key.code == sf::Keyboard::Enter) {
+                    if (selected == 0) {
+                        // Start Game
+                        goto GAME_LOOP;
+                    } else {
+                        // Exit
+                        window.close();
+                    }
+                }
             }
         }
 
-        // optional: remove off-screen obstacles
-        obstacles.erase(
-            std::remove_if(obstacles.begin(),
-                           obstacles.end(),
-                           [&](const Obstacle& o){
-                               return o.getX() + o.getGlobalBounds().width < 0;
-                           }),
-            obstacles.end());
+        window.clear(sf::Color::Black);
+        window.draw(menuItems[0]);
+        window.draw(menuItems[1]);
+        window.display();
+    }
 
+    return 0;
+
+GAME_LOOP:
+    // 4) Initialize your game objects
+    Player player("assets/img/bik.png");
+    ObstacleManager obstacleManager(2.0f, 0.1f);
+
+    // Main game loop
+    while (window.isOpen()) {
+        sf::Event evt;
+        while (window.pollEvent(evt)) {
+            if (evt.type == sf::Event::Closed)
+                window.close();
+        }
+
+        // Input, update, collision
+        player.handleInput();
+        player.update(window);
+        obstacleManager.update(window);
+
+        if (obstacleManager.checkCollision(player.getGlobalBounds())) {
+            std::cout << "💥 Hit obstacle! 💥\n";
+        }
+
+        // Draw
+        window.clear();
+        player.draw(window);
+        obstacleManager.draw(window);
         window.display();
     }
 
